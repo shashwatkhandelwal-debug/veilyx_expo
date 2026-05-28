@@ -16,6 +16,7 @@ export type RootStackParamList = {
     dob: string;
     fileUri: string;
     fileName: string;
+    xmlData?: any;
   };
   Verify: {
     name: string;
@@ -24,6 +25,7 @@ export type RootStackParamList = {
     fileName: string;
     photoUri: string;
     compressedPhotoBase64?: string;
+    xmlData?: any;
   };
   Result: {
     proofToken: string;

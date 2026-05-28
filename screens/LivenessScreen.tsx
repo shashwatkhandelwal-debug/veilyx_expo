@@ -8,6 +8,7 @@ import {
   StatusBar,
   Image,
   Alert,
+  Animated,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,7 +34,7 @@ function sleep(ms: number) {
 }
 
 export default function LivenessScreen({ navigation, route }: Props) {
-  const { name, dob, fileUri, fileName } = route.params;
+  const { name, dob, fileUri, fileName, xmlData } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState<number>(-1); // -1 = not started
@@ -91,8 +92,104 @@ export default function LivenessScreen({ navigation, route }: Props) {
 
   function onContinue() {
     if (!photoUri) return;
-    navigation.navigate('Verify', { name, dob, fileUri, fileName, photoUri, compressedPhotoBase64: compressedBase64 });
+    navigation.navigate('Verify', {
+      name,
+      dob,
+      fileUri,
+      fileName,
+      photoUri,
+      compressedPhotoBase64: compressedBase64,
+      xmlData,
+    });
   }
+
+  // Animation values for scan lines and badges
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  const badgePulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Scan line animation loop
+  useEffect(() => {
+    if (photoUri) {
+      scanAnim.setValue(0);
+      return;
+    }
+    const scanLoop = Animated.loop(
+      Animated.timing(scanAnim, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      })
+    );
+    scanLoop.start();
+    return () => scanLoop.stop();
+  }, [photoUri]);
+
+  // Badge pulse animation loop
+  useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+    const isPulsing = !photoUri && stepIndex !== 1 && stepIndex !== 2;
+    
+    if (isPulsing) {
+      animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(badgePulseAnim, {
+            toValue: 0.35,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(badgePulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+    } else {
+      badgePulseAnim.setValue(1);
+    }
+
+    return () => {
+      if (animation) animation.stop();
+    };
+  }, [photoUri, stepIndex]);
+
+  // Helper selectors for dynamic UI styling
+  const getOvalColor = () => {
+    if (photoUri) return COLORS.teal;
+    if (stepIndex === 1 || stepIndex === 2) return '#FFB347'; // Turn left or right (amber)
+    return COLORS.teal; // default teal
+  };
+
+  const getBadgeText = () => {
+    if (photoUri) return '✓ CAPTURED';
+    if (stepIndex === 1) return 'TURN LEFT';
+    if (stepIndex === 2) return 'TURN RIGHT';
+    return 'SCANNING';
+  };
+
+  const getSubInstructionText = () => {
+    if (photoUri) return 'Press Continue to proceed';
+    if (stepIndex === 0) return 'Position your face inside the oval';
+    if (stepIndex === 1) return 'Keep your shoulders still';
+    if (stepIndex === 2) return 'Keep your shoulders still';
+    if (stepIndex === 3) return 'Hold still for automatic capture';
+    return 'Fit your face in the oval frame';
+  };
+
+  const ovalColor = getOvalColor();
+  const leftActive = stepIndex === 1;
+  const rightActive = stepIndex === 2;
+
+  const translateY = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [15, 185],
+  });
+
+  const scanOpacity = scanAnim.interpolate({
+    inputRange: [0, 0.15, 0.5, 0.85, 1],
+    outputRange: [0, 0.8, 1, 0.8, 0],
+  });
 
   /* ── Permission states ── */
   if (!permission) {
@@ -147,23 +244,109 @@ export default function LivenessScreen({ navigation, route }: Props) {
           />
         )}
 
-        {/* Corner guides */}
-        <View style={[styles.corner, styles.cornerTL]} />
-        <View style={[styles.corner, styles.cornerTR]} />
-        <View style={[styles.corner, styles.cornerBL]} />
-        <View style={[styles.corner, styles.cornerBR]} />
+        {/* eKYC Cutout Mask Overlay (Darkened outer zone, transparent core) */}
+        <View style={styles.maskOverlay} pointerEvents="none">
+          <View style={styles.ovalMask} />
+        </View>
 
-        {/* Instruction overlay */}
-        {currentInstruction && !photoUri && (
-          <View style={styles.instructionOverlay}>
-            <Text style={styles.instructionText}>{currentInstruction}</Text>
-          </View>
-        )}
+        {/* Oval Bounding Box containing the Oval Border and scan line */}
+        <View style={styles.ovalBoundingBox} pointerEvents="none">
+          <View style={[styles.ovalBorder, { borderColor: ovalColor }]} />
 
-        {/* Captured badge */}
-        {photoUri && (
-          <View style={styles.capturedBadge}>
-            <Text style={styles.capturedBadgeText}>Captured</Text>
+          {/* Animated scan line */}
+          {!photoUri && (
+            <Animated.View style={[
+              styles.scanLineContainer,
+              {
+                transform: [{ translateY }],
+                opacity: scanOpacity,
+              }
+            ]}>
+              <View style={[styles.scanLineGlow, { backgroundColor: ovalColor }]} />
+              <View style={[styles.scanLineCore, { backgroundColor: ovalColor }]} />
+            </Animated.View>
+          )}
+        </View>
+
+        {/* Brackets Box (shares same position/size, does not clip corners) */}
+        <View style={styles.bracketsBox} pointerEvents="none">
+          {/* 4 Corner Markers */}
+          <View style={[styles.cornerMarker, styles.cornerTL, { borderColor: ovalColor }]} />
+          <View style={[styles.cornerMarker, styles.cornerTR, { borderColor: ovalColor }]} />
+          <View style={[styles.cornerMarker, styles.cornerBL, { borderColor: ovalColor }]} />
+          <View style={[styles.cornerMarker, styles.cornerBR, { borderColor: ovalColor }]} />
+        </View>
+      </View>
+
+      {/* Instructions Overlay/Container */}
+      <View style={styles.instructionsContainer}>
+        {/* Status Badge */}
+        <Animated.View style={[
+          styles.badgePill,
+          {
+            borderColor: ovalColor,
+            opacity: getBadgeText() === '✓ CAPTURED' ? 1 : badgePulseAnim
+          }
+        ]}>
+          <Text style={[styles.badgeText, { color: ovalColor }]}>
+            {getBadgeText()}
+          </Text>
+        </Animated.View>
+
+        {/* Instruction Text */}
+        <Text style={styles.mainInstructionText}>
+          {photoUri ? 'Face capture completed' : (currentInstruction || 'Preparing face scan...')}
+        </Text>
+        <Text style={styles.subInstructionText}>
+          {getSubInstructionText()}
+        </Text>
+
+        {/* Direction Arrows Row */}
+        {!photoUri && (
+          <View style={styles.arrowsRow}>
+            {/* LEFT Arrow */}
+            <View style={styles.arrowBox}>
+              <View style={[
+                styles.arrowCircle,
+                leftActive ? {
+                  borderColor: '#FFB347',
+                  backgroundColor: 'rgba(255,179,71,0.12)',
+                } : {
+                  borderColor: '#333333',
+                  backgroundColor: 'transparent',
+                }
+              ]}>
+                <Text style={[
+                  styles.arrowChar,
+                  { color: leftActive ? '#FFB347' : '#333333' }
+                ]}>
+                  ←
+                </Text>
+              </View>
+              <Text style={styles.arrowLabel}>LEFT</Text>
+            </View>
+
+            {/* RIGHT Arrow */}
+            <View style={styles.arrowBox}>
+              <View style={[
+                styles.arrowCircle,
+                rightActive ? {
+                  borderColor: '#FFB347',
+                  backgroundColor: 'rgba(255,179,71,0.12)',
+                } : {
+                  borderColor: '#333333',
+                  backgroundColor: 'transparent',
+                }
+              ]}>
+                <Text style={[
+                  styles.arrowChar,
+                  { color: rightActive ? '#FFB347' : '#333333' }
+                ]}>
+                  →
+                </Text>
+              </View>
+              <Text style={styles.arrowLabel}>RIGHT</Text>
+            </View>
           </View>
         )}
       </View>
@@ -240,61 +423,200 @@ const styles = StyleSheet.create({
   backText: { color: COLORS.teal, fontSize: 15, fontWeight: '600', width: 40 },
   title: { fontSize: 20, fontWeight: '700', color: COLORS.white },
   cameraWrap: {
-    flex: 1,
+    flex: 1.1, // slightly increased relative share to make oval visually dominant
     marginHorizontal: 20,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  camera: { flex: 1 },
-  preview: { flex: 1, resizeMode: 'cover' },
-  corner: { position: 'absolute', width: 28, height: 28, borderColor: COLORS.teal },
-  cornerTL: { top: 12, left: 12, borderTopWidth: 3, borderLeftWidth: 3, borderRadius: 3 },
-  cornerTR: { top: 12, right: 12, borderTopWidth: 3, borderRightWidth: 3, borderRadius: 3 },
-  cornerBL: { bottom: 12, left: 12, borderBottomWidth: 3, borderLeftWidth: 3, borderRadius: 3 },
-  cornerBR: { bottom: 12, right: 12, borderBottomWidth: 3, borderRightWidth: 3, borderRadius: 3 },
-  instructionOverlay: {
+  camera: { ...StyleSheet.absoluteFillObject },
+  preview: { ...StyleSheet.absoluteFillObject, resizeMode: 'cover' },
+  
+  // Cutout Mask Overlay
+  maskOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  ovalMask: {
+    width: 160,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 600,
+    borderColor: 'rgba(0,0,0,0.72)',
     position: 'absolute',
-    bottom: 20,
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  },
+
+  // Oval Bounding Box & Border
+  ovalBoundingBox: {
+    width: 160,
+    height: 200,
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden', // clips scan line to the oval contour
+    borderRadius: 100,
+  },
+  ovalBorder: {
+    width: 160,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2.5,
+    position: 'absolute',
+  },
+
+  // Brackets box to contain brackets without clipping
+  bracketsBox: {
+    width: 160,
+    height: 200,
+    position: 'absolute',
+  },
+  // Corner Bracket Markers
+  cornerMarker: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderWidth: 3,
+    zIndex: 10,
+  },
+  cornerTL: {
+    top: -4,
+    left: -4,
+    borderBottomWidth: 0,
+    borderRightWidth: 0,
+    borderTopLeftRadius: 8,
+  },
+  cornerTR: {
+    top: -4,
+    right: -4,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderTopRightRadius: 8,
+  },
+  cornerBL: {
+    bottom: -4,
+    left: -4,
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderBottomLeftRadius: 8,
+  },
+  cornerBR: {
+    bottom: -4,
+    right: -4,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderBottomRightRadius: 8,
+  },
+
+  // Animated Scan Line
+  scanLineContainer: {
+    position: 'absolute',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 10,
+  },
+  scanLineGlow: {
+    position: 'absolute',
+    height: 8,
+    width: '85%',
+    borderRadius: 4,
+    opacity: 0.25,
+  },
+  scanLineCore: {
+    height: 2,
+    width: '90%',
+    borderRadius: 1,
+  },
+
+  // Instructions Container Panel
+  instructionsContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 4,
     alignItems: 'center',
   },
-  instructionText: {
-    color: COLORS.white,
-    fontSize: 17,
+  badgePill: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    alignSelf: 'center',
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontFamily: 'monospace',
     fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  mainInstructionText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.white,
     textAlign: 'center',
+    marginBottom: 4,
   },
-  capturedBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: COLORS.teal,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  subInstructionText: {
+    fontSize: 12,
+    color: COLORS.gray,
+    textAlign: 'center',
+    marginBottom: 12,
   },
-  capturedBadgeText: { color: COLORS.bg, fontWeight: '700', fontSize: 12 },
+
+  // Direction Arrows
+  arrowsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 36,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  arrowBox: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  arrowCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowChar: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  arrowLabel: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: COLORS.gray,
+    letterSpacing: 0.5,
+  },
+
+  // Progress dots
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 16,
+    paddingVertical: 8,
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  dotPending: { backgroundColor: '#333' },
-  dotActive:  { backgroundColor: COLORS.teal, transform: [{ scale: 1.3 }] },
-  dotDone:    { backgroundColor: 'rgba(0,212,170,0.45)' },
+  dotPending: { backgroundColor: '#333333' },
+  dotActive:  { backgroundColor: '#FFFFFF', transform: [{ scale: 1.3 }] },
+  dotDone:    { backgroundColor: '#00D4AA' },
+
+  // Bottom actions
   actions: {
     paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingBottom: 20,
     paddingTop: 4,
     flexDirection: 'row',
     gap: 14,

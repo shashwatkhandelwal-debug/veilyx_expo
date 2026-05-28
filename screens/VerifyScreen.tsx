@@ -62,7 +62,7 @@ function dotSymbol(state: StepState, index: number) {
 }
 
 export default function VerifyScreen({ navigation, route }: Props) {
-  const { fileUri, fileName } = route.params;
+  const { fileUri, fileName, xmlData } = route.params;
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
 
   function update(index: number, state: StepState, detail = '') {
@@ -96,20 +96,12 @@ export default function VerifyScreen({ navigation, route }: Props) {
 
     // Step 2 — Read file
     update(1, 'running');
-    await sleep(300);
-    let xmlBase64 = 'demo_base64_placeholder';
-    try {
-      xmlBase64 = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      update(1, 'done', (fileName || 'file') + ' read');
-    } catch {
-      update(1, 'done', 'Demo XML used');
-    }
+    // Using pre-parsed xmlData (instant complete, no file read needed)
+    update(1, 'done', (fileName || 'file') + ' read (pre-parsed)');
 
     // Step 3 — Parse
     update(2, 'running');
-    await sleep(1000);
+    // Instant complete since parsing happened in FormScreen
     update(2, 'done', 'Attributes extracted on-device');
 
     // Step 4 — Sign
