@@ -62,7 +62,7 @@ function dotSymbol(state: StepState, index: number) {
 }
 
 export default function VerifyScreen({ navigation, route }: Props) {
-  const { fileUri, fileName, xmlData } = route.params;
+  const { fileUri, fileName } = route.params;
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
 
   function update(index: number, state: StepState, detail = '') {
@@ -96,12 +96,20 @@ export default function VerifyScreen({ navigation, route }: Props) {
 
     // Step 2 — Read file
     update(1, 'running');
-    // Using pre-parsed xmlData (instant complete, no file read needed)
-    update(1, 'done', (fileName || 'file') + ' read (pre-parsed)');
+    await sleep(300);
+    let xmlBase64 = 'demo_base64_placeholder';
+    try {
+      xmlBase64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      update(1, 'done', (fileName || 'file') + ' read');
+    } catch {
+      update(1, 'done', 'Demo XML used');
+    }
 
     // Step 3 — Parse
     update(2, 'running');
-    // Instant complete since parsing happened in FormScreen
+    await sleep(1000);
     update(2, 'done', 'Attributes extracted on-device');
 
     // Step 4 — Sign
@@ -208,18 +216,24 @@ export default function VerifyScreen({ navigation, route }: Props) {
 
     // Step 7 — Fraud assessment (2s delay lets backend finish computing)
     update(7, 'running');
-    await sleep(2000);
+    await sleep(2000); // wait for backend to compute
     let fraudScore = -1;
     try {
-      const fraudRes = await fetch(`${BASE_URL}/fraud/assessment/${verificationId}`, {
-        headers: { 'X-API-Key': API_KEY },
-      });
+      const fraudRes = await fetch(
+        `${BASE_URL}/fraud/assessment/${verificationId}`,
+        { headers: { 'X-API-Key': API_KEY } }
+      );
       if (fraudRes.ok) {
-        const fraudResData = await fraudRes.json();
-        fraudScore = fraudResData.final_score ?? fraudResData.ml_score ?? fraudResData.rules_score ?? -1;
+        const fraudData = await fraudRes.json();
+        fraudScore = fraudData.final_score ?? 
+                     fraudData.ml_score ?? 
+                     fraudData.rules_score ?? -1;
       }
-    } catch (e) {}
-    update(7, 'done', fraudScore >= 0 ? `Score: ${fraudScore}/100` : 'Assessment pending');
+    } catch (e) {
+      // fail open, fraudScore stays -1
+    }
+    update(7, 'done', fraudScore >= 0 ? 
+      `Score: ${fraudScore}/100` : 'N/A');
 
     await sleep(600);
     navigation.replace('Result', { proofToken, verificationId, fraudData, valid, faceMatchScore, fraudScore } as any);

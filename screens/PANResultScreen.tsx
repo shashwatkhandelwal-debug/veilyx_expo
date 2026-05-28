@@ -15,16 +15,9 @@ import { RootStackParamList } from '../App';
 import { COLORS } from '../constants';
 
 type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Result'>;
-  route: RouteProp<RootStackParamList, 'Result'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'PANResult'>;
+  route: RouteProp<RootStackParamList, 'PANResult'>;
 };
-
-const CHIPS = [
-  'Age 18+',
-  'Valid Document',
-  'XML Uploaded',
-  'Face Captured',
-];
 
 function getScoreColor(score: number) {
   if (score < 30) return COLORS.teal;
@@ -38,21 +31,25 @@ function getRiskLabel(score: number) {
   return 'HIGH RISK';
 }
 
-export default function ResultScreen({ navigation, route }: Props) {
-  const { proofToken, verificationId, fraudData, valid } = route.params;
-  const faceMatchScore: number = (route.params as any).faceMatchScore ?? 0;
-  const fraudScore: number     = (route.params as any).fraudScore ?? -1;
+export default function PANResultScreen({ navigation, route }: Props) {
+  const {
+    verified,
+    name,
+    panStatus,
+    isAdult,
+    gender,
+    verificationId,
+    vaultStored,
+    fraudScore,
+  } = route.params;
 
-  // Use passed fraudScore directly
-  const score = fraudScore;
-
+  const score = fraudScore ?? -1;
   const scoreAvailable = score >= 0;
   const scoreColor = scoreAvailable ? getScoreColor(score) : COLORS.gray;
-  const riskLabel  = scoreAvailable ? getRiskLabel(score)  : 'N/A';
+  const riskLabel = scoreAvailable ? getRiskLabel(score) : 'N/A';
 
-  const barAnim     = useRef(new Animated.Value(0)).current;
-  const faceBarAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim    = useRef(new Animated.Value(0)).current;
+  const barAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -67,12 +64,6 @@ export default function ResultScreen({ navigation, route }: Props) {
         delay: 400,
         useNativeDriver: false,
       }),
-      Animated.timing(faceBarAnim, {
-        toValue: faceMatchScore / 100,
-        duration: 1000,
-        delay: 600,
-        useNativeDriver: false,
-      }),
     ]).start();
   }, []);
 
@@ -81,20 +72,12 @@ export default function ResultScreen({ navigation, route }: Props) {
     outputRange: ['0%', '100%'],
   });
 
-  const faceBarWidth = faceBarAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
-  const faceConfidence =
-    faceMatchScore >= 90 ? 'HIGH CONFIDENCE' :
-    faceMatchScore >= 70 ? 'MEDIUM CONFIDENCE' :
-    'LOW CONFIDENCE';
-
-  const faceConfidenceColor =
-    faceMatchScore >= 90 ? COLORS.teal :
-    faceMatchScore >= 70 ? '#FFB800' :
-    COLORS.red;
+  const chips = [
+    { label: 'Name', value: name, active: !!name },
+    { label: 'PAN Active', value: panStatus === 'A' ? 'Yes' : 'No', active: panStatus === 'A' },
+    { label: 'Age 18+', value: isAdult ? 'Yes' : 'No', active: isAdult },
+    { label: 'Gender', value: gender, active: !!gender },
+  ];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -108,73 +91,61 @@ export default function ResultScreen({ navigation, route }: Props) {
           <View style={styles.resultBlock}>
             <View style={[
               styles.circle,
-              { borderColor: valid ? COLORS.teal : COLORS.red },
+              { borderColor: verified ? COLORS.teal : COLORS.red },
             ]}>
               <Text style={[
                 styles.circleText,
-                { color: valid ? COLORS.teal : COLORS.red },
+                { color: verified ? COLORS.teal : COLORS.red },
               ]}>
-                {valid ? 'V' : 'X'}
+                {verified ? '✓' : '✗'}
               </Text>
             </View>
             <Text style={styles.resultTitle}>
-              {valid ? 'Identity Verified' : 'Verification Failed'}
+              {verified ? 'PAN Verified' : 'Verification Failed'}
             </Text>
             <Text style={styles.resultSub}>
-              {valid
-                ? 'Your identity has been verified with hardware-signed proof.'
-                : 'Verification could not be completed. Please try again.'}
+              {verified
+                ? 'Your PAN has been verified securely.'
+                : 'PAN verification could not be completed. Please try again.'}
             </Text>
           </View>
 
-          {/* Proof token */}
+          {/* Verification ID */}
           <View style={styles.tokenCard}>
-            <Text style={styles.tokenLabel}>Proof Token</Text>
-            <Text style={styles.tokenValue} numberOfLines={3}>
-              {proofToken}
+            <Text style={styles.tokenLabel}>VERIFICATION ID</Text>
+            <Text style={styles.tokenValue} numberOfLines={1}>
+              {verificationId}
             </Text>
-            {verificationId ? (
-              <Text style={styles.verificationIdText} numberOfLines={1}>
-                ID: {verificationId}
-              </Text>
-            ) : null}
           </View>
 
           {/* Attribute chips */}
           <Text style={styles.sectionLabel}>Verified Attributes</Text>
           <View style={styles.chips}>
-            {CHIPS.map((chip, i) => (
-              <View key={i} style={styles.chip}>
-                <Text style={styles.chipCheck}>+</Text>
-                <Text style={styles.chipText}>{chip}</Text>
+            {chips.map((chip, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.chip,
+                  !chip.active && { borderColor: 'rgba(255,100,100,0.3)', backgroundColor: 'rgba(255,100,100,0.05)' },
+                ]}
+              >
+                <Text style={[styles.chipCheck, !chip.active && { color: COLORS.red }]}>
+                  {chip.active ? '+' : '-'}
+                </Text>
+                <Text style={styles.chipText}>
+                  {chip.label}: {chip.value}
+                </Text>
               </View>
             ))}
           </View>
 
-          {/* Face Verification */}
-          {faceMatchScore > 0 && (
-            <>
-              <Text style={styles.sectionLabel}>Face Verification</Text>
-              <View style={styles.faceCard}>
-                <View style={styles.faceRow}>
-                  <Text style={styles.facePct}>{faceMatchScore}%</Text>
-                  <View style={styles.faceRight}>
-                    <Text style={styles.faceSubtitle}>Match confidence</Text>
-                    <View style={[styles.faceConfPill, { borderColor: faceConfidenceColor }]}>
-                      <Text style={[styles.faceConfText, { color: faceConfidenceColor }]}>
-                        {faceConfidence}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.barTrack}>
-                  <Animated.View
-                    style={[styles.barFill, { width: faceBarWidth, backgroundColor: COLORS.teal }]}
-                  />
-                </View>
-              </View>
-            </>
-          )}
+          {/* Vault Storage */}
+          <Text style={styles.sectionLabel}>Vault Storage</Text>
+          <View style={styles.vaultCard}>
+            <Text style={[styles.vaultText, { color: vaultStored ? COLORS.teal : '#FFB800' }]}>
+              {vaultStored ? 'Stored in PMLA Vault' : 'Vault storage pending'}
+            </Text>
+          </View>
 
           {/* Fraud score */}
           <Text style={styles.sectionLabel}>Fraud Risk Score</Text>
@@ -198,11 +169,6 @@ export default function ResultScreen({ navigation, route }: Props) {
                 ]}
               />
             </View>
-            {fraudData?.velocity_severity ? (
-              <Text style={styles.velocityText}>
-                Velocity: {String(fraudData.velocity_severity).toUpperCase()}
-              </Text>
-            ) : null}
           </View>
 
           {/* CTA */}
@@ -213,10 +179,6 @@ export default function ResultScreen({ navigation, route }: Props) {
           >
             <Text style={styles.againBtnText}>Verify Again</Text>
           </TouchableOpacity>
-
-          <Text style={styles.footer}>
-            Zero PII stored. Proof signed with hardware key.
-          </Text>
 
         </Animated.View>
       </ScrollView>
@@ -281,12 +243,6 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     lineHeight: 20,
   },
-  verificationIdText: {
-    fontSize: 11,
-    color: COLORS.gray,
-    marginTop: 8,
-    fontFamily: 'monospace',
-  },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -314,6 +270,19 @@ const styles = StyleSheet.create({
   },
   chipCheck: { color: COLORS.teal, fontSize: 12, fontWeight: '700' },
   chipText: { color: COLORS.white, fontSize: 13, fontWeight: '500' },
+  vaultCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    marginBottom: 28,
+    alignItems: 'center',
+  },
+  vaultText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   scoreCard: {
     backgroundColor: COLORS.card,
     borderRadius: 12,
@@ -347,37 +316,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   barFill: { height: '100%', borderRadius: 99 },
-  velocityText: { fontSize: 12, color: COLORS.gray, marginTop: 10 },
-  faceCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.2)',
-    marginBottom: 28,
-  },
-  faceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-    gap: 16,
-  },
-  facePct: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: COLORS.teal,
-    lineHeight: 52,
-  },
-  faceRight: { flex: 1, gap: 8 },
-  faceSubtitle: { fontSize: 13, color: COLORS.gray },
-  faceConfPill: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  faceConfText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
   againBtn: {
     backgroundColor: COLORS.teal,
     paddingVertical: 18,
@@ -386,10 +324,4 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   againBtnText: { fontSize: 16, fontWeight: '700', color: COLORS.bg },
-  footer: {
-    fontSize: 12,
-    color: COLORS.gray,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
 });

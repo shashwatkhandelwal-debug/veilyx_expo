@@ -41,13 +41,23 @@ export default function HomeScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Form')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.buttonText}>Start KYC</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.buttonPrimary}
+            onPress={() => navigation.navigate('Form')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.buttonText}>Verify with Aadhaar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.buttonSecondary}
+            onPress={() => navigation.navigate('PANForm')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.buttonTextSecondary}>Verify with PAN</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -111,16 +121,33 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     flex: 1,
   },
-  button: {
+  buttonContainer: {
+    gap: 12,
+  },
+  buttonPrimary: {
     backgroundColor: COLORS.teal,
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: 'center',
   },
+  buttonSecondary: {
+    backgroundColor: 'transparent',
+    paddingVertical: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.teal,
+  },
   buttonText: {
     fontSize: 17,
     fontWeight: '700',
     color: COLORS.bg,
+    letterSpacing: 0.3,
+  },
+  buttonTextSecondary: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.teal,
     letterSpacing: 0.3,
   },
 });

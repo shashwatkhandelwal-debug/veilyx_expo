@@ -16,16 +16,15 @@ import { RootStackParamList } from '../App';
 import { COLORS } from '../constants';
 
 type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Form'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'PANForm'>;
 };
 
-export default function FormScreen({ navigation }: Props) {
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
+export default function PANFormScreen({ navigation }: Props) {
+  const [panNumber, setPanNumber] = useState('');
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
-  const canContinue = name.trim().length > 0 && !!fileUri;
+  const canContinue = panNumber.trim().length === 10 && !!fileUri;
 
   async function pickXml() {
     try {
@@ -42,38 +41,17 @@ export default function FormScreen({ navigation }: Props) {
     }
   }
 
-  const handleDobChange = (text: string) => {
-    let cleaned = text.replace(/[^0-9]/g, '');
-    const isDeleting = text.length < dob.length;
-    if (isDeleting && dob.endsWith('/') && !text.endsWith('/')) {
-      cleaned = cleaned.slice(0, -1);
-    }
-    let formatted = '';
-    if (cleaned.length > 0) {
-      formatted += cleaned.substring(0, 2);
-      if (cleaned.length > 2 || (cleaned.length === 2 && !isDeleting)) {
-        formatted += '/';
-      }
-      if (cleaned.length > 2) {
-        formatted += cleaned.substring(2, 4);
-        if (cleaned.length > 4 || (cleaned.length === 4 && !isDeleting)) {
-          formatted += '/';
-        }
-        if (cleaned.length > 4) {
-          formatted += cleaned.substring(4, 8);
-        }
-      }
-    }
-    setDob(formatted);
+  const handlePanChange = (text: string) => {
+    const cleaned = text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    setPanNumber(cleaned);
   };
 
   function onContinue() {
     if (!canContinue) return;
-    navigation.navigate('Liveness', {
-      name: name.trim(),
-      dob: dob.trim(),
+    navigation.navigate('PANVerify', {
+      panNumber: panNumber.trim(),
       fileUri: fileUri!,
-      fileName: fileName ?? 'aadhaar.xml',
+      fileName: fileName ?? 'pan.xml',
     });
   }
 
@@ -88,36 +66,26 @@ export default function FormScreen({ navigation }: Props) {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Enter Your Details</Text>
+        <Text style={styles.title}>Enter PAN Details</Text>
         <Text style={styles.subtitle}>
           Your information is processed locally and never stored.
         </Text>
 
-        <Text style={styles.label}>Full Name</Text>
+        <Text style={styles.label}>PAN Number</Text>
         <TextInput
           style={styles.input}
-          placeholder="As on Aadhaar"
+          placeholder="AAAAA9999A"
           placeholderTextColor={COLORS.gray}
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
-
-        <Text style={styles.label}>Date of Birth</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="DD/MM/YYYY"
-          placeholderTextColor={COLORS.gray}
-          value={dob}
-          onChangeText={handleDobChange}
-          keyboardType="numeric"
+          value={panNumber}
+          onChangeText={handlePanChange}
+          autoCapitalize="characters"
           maxLength={10}
         />
 
-        <Text style={styles.label}>Aadhaar XML</Text>
+        <Text style={styles.label}>PAN XML</Text>
         <TouchableOpacity style={styles.uploadBtn} onPress={pickXml} activeOpacity={0.8}>
           <Text style={styles.uploadBtnText}>
-            {fileName ? 'Change File' : 'Upload Aadhaar XML'}
+            {fileName ? 'Change File' : 'Upload PAN XML'}
           </Text>
         </TouchableOpacity>
 

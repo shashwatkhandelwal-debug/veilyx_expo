@@ -7,6 +7,9 @@ import FormScreen from './screens/FormScreen';
 import LivenessScreen from './screens/LivenessScreen';
 import VerifyScreen from './screens/VerifyScreen';
 import ResultScreen from './screens/ResultScreen';
+import PANFormScreen from './screens/PANFormScreen';
+import PANVerifyScreen from './screens/PANVerifyScreen';
+import PANResultScreen from './screens/PANResultScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -16,7 +19,6 @@ export type RootStackParamList = {
     dob: string;
     fileUri: string;
     fileName: string;
-    xmlData?: any;
   };
   Verify: {
     name: string;
@@ -25,13 +27,28 @@ export type RootStackParamList = {
     fileName: string;
     photoUri: string;
     compressedPhotoBase64?: string;
-    xmlData?: any;
   };
   Result: {
     proofToken: string;
     verificationId: string | null;
     fraudData: any | null;
     valid: boolean;
+  };
+  PANForm: undefined;
+  PANVerify: {
+    fileUri: string;
+    fileName: string;
+    panNumber: string;
+  };
+  PANResult: {
+    verified: boolean;
+    name: string;
+    panStatus: string;
+    isAdult: boolean;
+    gender: string;
+    verificationId: string;
+    vaultStored: boolean;
+    fraudScore: number | null;
   };
 };
 
@@ -53,6 +70,9 @@ export default function App() {
         <Stack.Screen name="Liveness" component={LivenessScreen} />
         <Stack.Screen name="Verify"   component={VerifyScreen} />
         <Stack.Screen name="Result"   component={ResultScreen} />
+        <Stack.Screen name="PANForm"   component={PANFormScreen} />
+        <Stack.Screen name="PANVerify" component={PANVerifyScreen} />
+        <Stack.Screen name="PANResult" component={PANResultScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

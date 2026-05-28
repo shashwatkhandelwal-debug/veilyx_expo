@@ -34,7 +34,7 @@ function sleep(ms: number) {
 }
 
 export default function LivenessScreen({ navigation, route }: Props) {
-  const { name, dob, fileUri, fileName, xmlData } = route.params;
+  const { name, dob, fileUri, fileName } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState<number>(-1); // -1 = not started
@@ -92,15 +92,7 @@ export default function LivenessScreen({ navigation, route }: Props) {
 
   function onContinue() {
     if (!photoUri) return;
-    navigation.navigate('Verify', {
-      name,
-      dob,
-      fileUri,
-      fileName,
-      photoUri,
-      compressedPhotoBase64: compressedBase64,
-      xmlData,
-    });
+    navigation.navigate('Verify', { name, dob, fileUri, fileName, photoUri, compressedPhotoBase64: compressedBase64 });
   }
 
   // Animation values for scan lines and badges
