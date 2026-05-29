@@ -93,10 +93,12 @@ export default function PANVerifyScreen({ navigation, route }: Props) {
 
       if (res.ok) {
         const data = await res.json();
-        name = data.name || name;
-        panStatus = data.pan_status || panStatus;
-        isAdult = data.is_adult || isAdult;
-        gender = data.gender || gender;
+        if (data.attributes) {
+          name = data.attributes.name || name;
+          panStatus = data.attributes.pan_status || panStatus;
+          isAdult = data.attributes.is_adult ?? isAdult;
+          gender = data.attributes.gender || gender;
+        }
         verified = data.valid ?? true;
         update(1, 'done', 'Signature verified');
       } else {

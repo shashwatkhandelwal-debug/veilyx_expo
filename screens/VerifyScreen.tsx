@@ -216,24 +216,28 @@ export default function VerifyScreen({ navigation, route }: Props) {
 
     // Step 7 — Fraud assessment (2s delay lets backend finish computing)
     update(7, 'running');
-    await sleep(2000); // wait for backend to compute
     let fraudScore = -1;
-    try {
-      const fraudRes = await fetch(
-        `${BASE_URL}/fraud/assessment/${verificationId}`,
-        { headers: { 'X-API-Key': API_KEY } }
-      );
-      if (fraudRes.ok) {
-        const fraudData = await fraudRes.json();
-        fraudScore = fraudData.final_score ?? 
-                     fraudData.ml_score ?? 
-                     fraudData.rules_score ?? -1;
+    if (verificationId?.startsWith('expo_')) {
+      update(7, 'done', 'N/A');
+    } else {
+      await sleep(2000); // wait for backend to compute
+      try {
+        const fraudRes = await fetch(
+          `${BASE_URL}/fraud/assessment/${verificationId}`,
+          { headers: { 'X-API-Key': API_KEY } }
+        );
+        if (fraudRes.ok) {
+          const fraudData = await fraudRes.json();
+          fraudScore = fraudData.final_score ?? 
+                       fraudData.ml_score ?? 
+                       fraudData.rules_score ?? -1;
+        }
+      } catch (e) {
+        // fail open, fraudScore stays -1
       }
-    } catch (e) {
-      // fail open, fraudScore stays -1
+      update(7, 'done', fraudScore >= 0 ? 
+        `Score: ${fraudScore}/100` : 'N/A');
     }
-    update(7, 'done', fraudScore >= 0 ? 
-      `Score: ${fraudScore}/100` : 'N/A');
 
     await sleep(600);
     navigation.replace('Result', { proofToken, verificationId, fraudData, valid, faceMatchScore, fraudScore } as any);
