@@ -76,6 +76,10 @@ export default function VerifyScreen({ navigation, route }: Props) {
   }, []);
 
   async function run() {
+    try {
+      fetch(`${BASE_URL}/health`, { method: 'GET' });
+    } catch (e) {}
+
     // Step 1 — Nonce
     update(0, 'running');
     let nonce = 'fallback_' + randomHex(10);
