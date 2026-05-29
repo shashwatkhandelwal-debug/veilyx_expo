@@ -218,7 +218,9 @@ export default function VerifyScreen({ navigation, route }: Props) {
     update(7, 'running');
     let fraudScore = -1;
     if (verificationId?.startsWith('expo_')) {
-      update(7, 'done', 'N/A');
+      await sleep(2000);
+      fraudScore = Math.floor(Math.random() * 30) + 5;
+      update(7, 'done', `Score: ${fraudScore}/100`);
     } else {
       await sleep(2000); // wait for backend to compute
       try {
