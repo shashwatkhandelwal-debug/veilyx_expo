@@ -41,11 +41,14 @@ export default function PANFormScreen({ navigation }: Props) {
         setFileName(pickedName);
 
         try {
+          console.log('Attempting cache copy from:', pickedUri);
           const cachedUri = FileSystem.cacheDirectory + pickedName;
           await FileSystem.copyAsync({ from: pickedUri, to: cachedUri });
           setCachedFileUri(cachedUri);
-        } catch {
-          setCachedFileUri(pickedUri);
+        } catch (e) {
+          console.error('Cache copy failed:', e);
+          console.error('pickedUri was:', pickedUri);
+          setCachedFileUri(pickedUri); // fallback
         }
       }
     } catch {
