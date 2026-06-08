@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StatusBar,
   ScrollView,
   Animated,
+  Modal,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -42,6 +43,8 @@ export default function PANResultScreen({ navigation, route }: Props) {
     vaultStored,
     fraudScore,
   } = route.params;
+
+  const [showConsent, setShowConsent] = useState(false);
 
   const score = fraudScore ?? -1;
   const scoreAvailable = score >= 0;
@@ -180,8 +183,64 @@ export default function PANResultScreen({ navigation, route }: Props) {
             <Text style={styles.againBtnText}>Verify Again</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.gigBtn}
+            onPress={() => setShowConsent(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.gigBtnText}>
+              Continue to Shadowfax Driver Demo →
+            </Text>
+          </TouchableOpacity>
+
         </Animated.View>
       </ScrollView>
+
+      <Modal
+        visible={showConsent}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowConsent(false)}
+      >
+        <View style={consentStyles.overlay}>
+          <View style={consentStyles.sheet}>
+            <Text style={consentStyles.title}>
+              Payment Consent
+            </Text>
+            <Text style={consentStyles.body}>
+              I consent to Veilyx to use my bank details
+              and/or any relevant details for payment
+              purposes for the next 30 days.{'\n\n'}
+              Your Aadhaar and PAN data has been verified
+              and permanently discarded. Only your payment
+              details will be stored securely on your device.
+            </Text>
+            <Text style={consentStyles.note}>
+              You can revoke this consent at any time
+              from your wallet settings.
+            </Text>
+            <TouchableOpacity
+              style={consentStyles.acceptBtn}
+              onPress={() => {
+                setShowConsent(false);
+                navigation.navigate('GigBank');
+              }}
+            >
+              <Text style={consentStyles.acceptText}>
+                I Consent — Continue
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={consentStyles.declineBtn}
+              onPress={() => setShowConsent(false)}
+            >
+              <Text style={consentStyles.declineText}>
+                Decline
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -324,4 +383,68 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   againBtnText: { fontSize: 16, fontWeight: '700', color: COLORS.bg },
+  gigBtn: {
+    backgroundColor: '#ff6b00',
+    paddingVertical: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  gigBtnText: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: '#ffffff' 
+  },
+});
+
+const consentStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 28,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  body: {
+    fontSize: 15,
+    color: '#CCCCCC',
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  note: {
+    fontSize: 12,
+    color: '#888888',
+    marginBottom: 28,
+  },
+  acceptBtn: {
+    backgroundColor: '#00D4AA',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  acceptText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0A0A0A',
+  },
+  declineBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  declineText: {
+    fontSize: 15,
+    color: '#888888',
+  },
 });

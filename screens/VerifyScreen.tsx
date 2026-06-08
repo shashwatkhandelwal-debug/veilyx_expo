@@ -185,14 +185,36 @@ export default function VerifyScreen({ navigation, route }: Props) {
       update(4, 'done', 'Offline demo mode');
     }
 
-    // Step 5.5 — Face match
+    // Step 5.5 — Face match (real Rekognition)
+    const compressedPhotoBase64 = (route.params as any).compressedPhotoBase64;
     update(5, 'running');
-    await sleep(1500);
-    faceMatchScore = Math.floor(88 + Math.random() * 10); // realistic 88-97%
-    update(5, 'done', `${faceMatchScore}% match confidence`);
+    try {
+      const faceRes = await fetch(`${BASE_URL}/face/match`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': API_KEY,
+        },
+        body: JSON.stringify({
+          verification_id: verificationId,
+          selfie_base64: compressedPhotoBase64,
+          aadhaar_photo_base64: '',
+        }),
+      });
+      if (faceRes.ok) {
+        const faceData = await faceRes.json();
+        faceMatchScore = Math.round(faceData.similarity ?? 0);
+        update(5, 'done', `${faceMatchScore}% match confidence`);
+      } else {
+        update(5, 'done', 'Face match unavailable — demo mode');
+        faceMatchScore = 0;
+      }
+    } catch {
+      update(5, 'done', 'Face match unavailable — offline');
+      faceMatchScore = 0;
+    }
 
     // Step 6 — Evidence vault (fail-open, opt-in)
-    const compressedPhotoBase64 = (route.params as any).compressedPhotoBase64;
     if (compressedPhotoBase64) {
       update(6, 'running');
       try {
