@@ -21,21 +21,29 @@ export default function GigBankScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [account, setAccount] = useState('');
   const [ifsc, setIfsc] = useState('');
+  const [upiId, setUpiId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [upiLinked, setUpiLinked] = useState(false);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!name.trim() || !account.trim() || !ifsc.trim()) {
-      setError('All fields are required');
+      setError('Name, account number and IFSC are required');
       return;
     }
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess(true);
-    }, 2000);
+    // Mock penny drop (2 s)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Mock UPI verification if provided (0.5 s extra)
+    if (upiId.trim()) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // UPI verified (mocked for demo)
+      setUpiLinked(true);
+    }
+    setLoading(false);
+    setSuccess(true);
   };
 
   return (
@@ -54,8 +62,12 @@ export default function GigBankScreen({ navigation }: Props) {
             <Text style={styles.successSubtitle}>
               Your identity is verified and stored securely on this device
             </Text>
+            <Text style={styles.verifiedItem}>✓ Bank account verified</Text>
+            {upiLinked && (
+              <Text style={styles.verifiedItem}>✓ UPI ID linked</Text>
+            )}
             <TouchableOpacity
-              style={styles.buttonPrimary}
+              style={[styles.buttonPrimary, { marginTop: 24 }]}
               onPress={() => navigation.navigate('GigDelivery')}
               activeOpacity={0.85}
             >
@@ -96,6 +108,19 @@ export default function GigBankScreen({ navigation }: Props) {
                 value={ifsc}
                 onChangeText={(text) => setIfsc(text.toUpperCase())}
                 autoCapitalize="characters"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>UPI ID (optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 9876543210@ybl"
+                placeholderTextColor={COLORS.gray}
+                value={upiId}
+                onChangeText={setUpiId}
+                autoCapitalize="none"
+                keyboardType="email-address"
               />
             </View>
 
@@ -206,7 +231,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.gray,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
     lineHeight: 22,
+  },
+  verifiedItem: {
+    fontSize: 15,
+    color: COLORS.teal,
+    fontWeight: '600',
+    marginBottom: 6,
   },
 });
