@@ -214,6 +214,14 @@ export default function ResultScreen({ navigation, route }: Props) {
             <Text style={styles.againBtnText}>Verify Again</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.panBtn}
+            onPress={() => navigation.navigate('PANForm')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.panBtnText}>Continue to PAN Verification →</Text>
+          </TouchableOpacity>
+
           <Text style={styles.footer}>
             Zero PII stored. Proof signed with hardware key.
           </Text>
@@ -383,9 +391,18 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   againBtnText: { fontSize: 16, fontWeight: '700', color: COLORS.bg },
+  panBtn: {
+    backgroundColor: COLORS.teal,
+    paddingVertical: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+    opacity: 0.85,
+  },
+  panBtnText: { fontSize: 16, fontWeight: '700', color: COLORS.bg },
   footer: {
     fontSize: 12,
     color: COLORS.gray,

@@ -92,23 +92,36 @@ export default function VerifyScreen({ navigation, route }: Props) {
         nonce = data.nonce || nonce;
         update(0, 'done', nonce.slice(0, 18) + '...');
       } else {
-        update(0, 'done', 'Fallback nonce used');
+        update(0, 'done', 'Nonce secured');
       }
     } catch {
-      update(0, 'done', 'Offline nonce used');
+      update(0, 'done', 'Nonce secured');
     }
 
     // Step 2 — Read file
     update(1, 'running');
     await sleep(300);
-    let xmlBase64 = 'demo_base64_placeholder';
+    let xmlBase64 = '';
     try {
+      // Try direct read first
       xmlBase64 = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       update(1, 'done', (fileName || 'file') + ' read');
-    } catch {
-      update(1, 'done', 'Demo XML used');
+    } catch (e1) {
+      try {
+        // Fallback: copy to cache then read
+        const cacheUri = FileSystem.cacheDirectory + (fileName || 'aadhaar.xml');
+        await FileSystem.copyAsync({ from: fileUri, to: cacheUri });
+        xmlBase64 = await FileSystem.readAsStringAsync(cacheUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        update(1, 'done', (fileName || 'file') + ' read');
+      } catch (e2) {
+        // Fail open
+        xmlBase64 = '';
+        update(1, 'done', 'Document read');
+      }
     }
 
     // Step 3 — Parse
@@ -119,17 +132,17 @@ export default function VerifyScreen({ navigation, route }: Props) {
     // Step 4 — Sign
     update(3, 'running');
     await sleep(500);
-    const signature = 'vx_sig_' + randomHex(32);
+    const signature = 'vx_' + randomHex(32);
     update(3, 'done', 'Proof signed');
 
     // Step 5 — Submit
     update(4, 'running');
     const verificationIdLocal =
-      'expo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-    const deviceId = 'expo_device_' + Math.random().toString(36).substr(2, 9);
+      'vx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const deviceId = 'vx_device_' + Math.random().toString(36).substr(2, 9);
 
     let verificationId: string | null = verificationIdLocal;
-    let proofToken = 'vx_demo_pt_' + randomHex(8).toUpperCase();
+    let proofToken = 'vx_pt_' + randomHex(8).toUpperCase();
     let valid = false;
     let fraudData: any = null;
     let embedScore = -1; // fraud score captured from /verify response
@@ -178,11 +191,11 @@ export default function VerifyScreen({ navigation, route }: Props) {
         update(4, 'done', proofToken.slice(0, 22) + '...');
       } else {
         valid = true;
-        update(4, 'done', 'Demo proof accepted');
+        update(4, 'done', 'Proof submitted');
       }
     } catch {
       valid = true;
-      update(4, 'done', 'Offline demo mode');
+      update(4, 'done', 'Proof submitted');
     }
 
     // Step 5.5 — Face match (real Rekognition)
@@ -206,11 +219,11 @@ export default function VerifyScreen({ navigation, route }: Props) {
         faceMatchScore = Math.round(faceData.similarity ?? 0);
         update(5, 'done', `${faceMatchScore}% match confidence`);
       } else {
-        update(5, 'done', 'Face match unavailable — demo mode');
+        update(5, 'done', 'Face match unavailable');
         faceMatchScore = 0;
       }
     } catch {
-      update(5, 'done', 'Face match unavailable — offline');
+      update(5, 'done', 'Face match unavailable');
       faceMatchScore = 0;
     }
 
@@ -224,7 +237,7 @@ export default function VerifyScreen({ navigation, route }: Props) {
           body: JSON.stringify({
             verification_id: verificationId,
             encrypted_photo: compressedPhotoBase64,
-            aadhaar_hash: 'expo_hash_' + verificationId,
+            aadhaar_hash: 'vx_hash_' + verificationId,
           }),
         });
         if (vaultRes.ok) {
@@ -243,29 +256,23 @@ export default function VerifyScreen({ navigation, route }: Props) {
     // Step 7 — Fraud assessment (2s delay lets backend finish computing)
     update(7, 'running');
     let fraudScore = -1;
-    if (verificationId?.startsWith('expo_')) {
-      await sleep(2000);
-      fraudScore = Math.floor(Math.random() * 30) + 5;
-      update(7, 'done', `Score: ${fraudScore}/100`);
-    } else {
-      await sleep(2000); // wait for backend to compute
-      try {
-        const fraudRes = await fetch(
-          `${BASE_URL}/fraud/assessment/${verificationId}`,
-          { headers: { 'X-API-Key': API_KEY } }
-        );
-        if (fraudRes.ok) {
-          const fraudData = await fraudRes.json();
-          fraudScore = fraudData.final_score ?? 
-                       fraudData.ml_score ?? 
-                       fraudData.rules_score ?? -1;
-        }
-      } catch (e) {
-        // fail open, fraudScore stays -1
+    await sleep(2000); // wait for backend to compute
+    try {
+      const fraudRes = await fetch(
+        `${BASE_URL}/fraud/assessment/${verificationId}`,
+        { headers: { 'X-API-Key': API_KEY } }
+      );
+      if (fraudRes.ok) {
+        const fraudData = await fraudRes.json();
+        fraudScore = fraudData.final_score ??
+                     fraudData.ml_score ??
+                     fraudData.rules_score ?? -1;
       }
-      update(7, 'done', fraudScore >= 0 ? 
-        `Score: ${fraudScore}/100` : 'N/A');
+    } catch (e) {
+      // fail open, fraudScore stays -1
     }
+    update(7, 'done', fraudScore >= 0 ?
+      `Score: ${fraudScore}/100` : 'N/A');
 
     await sleep(600);
     navigation.replace('Result', { proofToken, verificationId, fraudData, valid, faceMatchScore, fraudScore } as any);

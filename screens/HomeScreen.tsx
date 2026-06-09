@@ -30,7 +30,7 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.features}>
           {[
             'Hardware-signed identity proof',
-            'Aadhaar XML processed on-device',
+            'Aadhaar & PAN verified on-device',
             'Real-time fraud risk scoring',
             'Zero PII stored anywhere',
           ].map((item, i) => (
@@ -47,15 +47,7 @@ export default function HomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Form')}
             activeOpacity={0.85}
           >
-            <Text style={styles.buttonText}>Verify with Aadhaar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.buttonSecondary}
-            onPress={() => navigation.navigate('PANForm')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.buttonTextSecondary}>Verify with PAN</Text>
+            <Text style={styles.buttonText}>Verify Identity</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -130,24 +122,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
-  buttonSecondary: {
-    backgroundColor: 'transparent',
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.teal,
-  },
   buttonText: {
     fontSize: 17,
     fontWeight: '700',
     color: COLORS.bg,
-    letterSpacing: 0.3,
-  },
-  buttonTextSecondary: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.teal,
     letterSpacing: 0.3,
   },
 });

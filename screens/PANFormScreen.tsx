@@ -11,7 +11,6 @@ import {
   Alert,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { COLORS } from '../constants';
@@ -24,7 +23,6 @@ export default function PANFormScreen({ navigation }: Props) {
   const [panNumber, setPanNumber] = useState('');
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [cachedFileUri, setCachedFileUri] = useState<string | null>(null);
 
   const canContinue = panNumber.trim().length === 10 && !!fileUri;
 
@@ -35,21 +33,8 @@ export default function PANFormScreen({ navigation }: Props) {
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.length) {
-        const pickedUri = result.assets[0].uri;
-        const pickedName = result.assets[0].name;
-        setFileUri(pickedUri);
-        setFileName(pickedName);
-
-        try {
-          console.log('Attempting cache copy from:', pickedUri);
-          const cachedUri = FileSystem.cacheDirectory + pickedName;
-          await FileSystem.copyAsync({ from: pickedUri, to: cachedUri });
-          setCachedFileUri(cachedUri);
-        } catch (e) {
-          console.error('Cache copy failed:', e);
-          console.error('pickedUri was:', pickedUri);
-          setCachedFileUri(pickedUri); // fallback
-        }
+        setFileUri(result.assets[0].uri);
+        setFileName(result.assets[0].name);
       }
     } catch {
       Alert.alert('Error', 'Could not open file picker.');
@@ -65,7 +50,7 @@ export default function PANFormScreen({ navigation }: Props) {
     if (!canContinue) return;
     navigation.navigate('PANVerify', {
       panNumber: panNumber.trim(),
-      fileUri: cachedFileUri ?? fileUri!,
+      fileUri: fileUri!,
       fileName: fileName ?? 'pan.xml',
     });
   }

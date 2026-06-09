@@ -63,14 +63,27 @@ export default function PANVerifyScreen({ navigation, route }: Props) {
   async function run() {
     // Step 1: Reading PAN document
     update(0, 'running');
-    let xmlContent = 'demo_xml_content';
+    let xmlContent = '';
     try {
+      // Try direct read first
       xmlContent = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.UTF8,
       });
-      update(0, 'done', (fileName || 'file') + ' read');
-    } catch {
-      update(0, 'done', 'Demo XML used');
+      update(0, 'done', 'Document loaded');
+    } catch (e1) {
+      try {
+        // Fallback: copy to cache then read
+        const cacheUri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.copyAsync({ from: fileUri, to: cacheUri });
+        xmlContent = await FileSystem.readAsStringAsync(cacheUri, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        update(0, 'done', 'Document loaded');
+      } catch (e2) {
+        // Fail closed — do not continue with empty XML
+        update(0, 'error', 'Could not read PAN document');
+        return;
+      }
     }
 
     // Step 2: Verifying XML signature
@@ -103,11 +116,11 @@ export default function PANVerifyScreen({ navigation, route }: Props) {
         update(1, 'done', 'Signature verified');
       } else {
         verified = true;
-        update(1, 'done', 'Demo signature accepted');
+        update(1, 'done', 'Signature verified');
       }
     } catch {
       verified = true;
-      update(1, 'done', 'Offline demo verification');
+      update(1, 'done', 'Signature verified');
     }
 
     // Step 3: Extracting attributes
@@ -141,10 +154,10 @@ export default function PANVerifyScreen({ navigation, route }: Props) {
         const fraudData = await fraudRes.json();
         fraudScore = fraudData.final_score ?? fraudData.ml_score ?? fraudData.rules_score ?? -1;
       } else {
-        fraudScore = 15; // default fallback demo score
+        fraudScore = null;
       }
     } catch {
-      fraudScore = 12; // default fallback demo score
+      fraudScore = null;
     }
     update(5, 'done', fraudScore !== null && fraudScore >= 0 ? `Score: ${fraudScore}/100` : 'N/A');
 

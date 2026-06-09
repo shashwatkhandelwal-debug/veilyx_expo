@@ -189,7 +189,7 @@ export default function PANResultScreen({ navigation, route }: Props) {
             activeOpacity={0.85}
           >
             <Text style={styles.gigBtnText}>
-              Continue to Shadowfax Driver Demo →
+              Continue to Payment Demo →
             </Text>
           </TouchableOpacity>
 
