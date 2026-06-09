@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { COLORS } from '../constants';
@@ -34,8 +35,22 @@ export default function FormScreen({ navigation }: Props) {
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.length) {
-        setFileUri(result.assets[0].uri);
-        setFileName(result.assets[0].name);
+        const asset = result.assets[0];
+        const originalUri = asset.uri;
+        const pickedName = asset.name ?? 'aadhaar.xml';
+
+        // Copy to cache immediately at pick time.
+        // Converts content:// to a file:// URI the app controls.
+        try {
+          const cacheUri = FileSystem.cacheDirectory + pickedName;
+          await FileSystem.copyAsync({ from: originalUri, to: cacheUri });
+          setFileUri(cacheUri);
+          setFileName(pickedName);
+        } catch (copyError) {
+          // Fallback to original URI if copy fails
+          setFileUri(originalUri);
+          setFileName(pickedName);
+        }
       }
     } catch {
       Alert.alert('Error', 'Could not open file picker.');

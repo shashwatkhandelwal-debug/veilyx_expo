@@ -202,7 +202,7 @@ export default function VerifyScreen({ navigation, route }: Props) {
     const compressedPhotoBase64 = (route.params as any).compressedPhotoBase64;
     update(5, 'running');
     try {
-      const faceRes = await fetch(`${BASE_URL}/face/match`, {
+      const faceRes = await fetch(`${BASE_URL}/verify/face-match`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -399,3 +399,5 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 });
+
+
