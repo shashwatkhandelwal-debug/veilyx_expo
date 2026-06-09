@@ -22,10 +22,10 @@ type Props = {
 
 export default function PANFormScreen({ navigation }: Props) {
   const [panNumber, setPanNumber] = useState('');
-  const [fileUri, setFileUri] = useState<string | null>(null);
+  const [xmlContent, setXmlContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
-  const canContinue = panNumber.trim().length === 10 && !!fileUri;
+  const canContinue = panNumber.trim().length === 10 && !!xmlContent;
 
   async function pickXml() {
     try {
@@ -35,21 +35,39 @@ export default function PANFormScreen({ navigation }: Props) {
       });
       if (!result.canceled && result.assets?.length) {
         const asset = result.assets[0];
-        const originalUri = asset.uri;
         const pickedName = asset.name ?? 'pan.xml';
+        setFileName(pickedName);
 
-        // Copy to cache immediately at pick time.
-        // Converts content:// to a file:// URI the app controls.
+        // Read content immediately while we have access
+        let content = '';
         try {
-          const cacheUri = FileSystem.cacheDirectory + pickedName;
-          await FileSystem.copyAsync({ from: originalUri, to: cacheUri });
-          setFileUri(cacheUri);
-          setFileName(pickedName);
-        } catch (copyError) {
-          // Fallback to original URI if copy fails
-          setFileUri(originalUri);
-          setFileName(pickedName);
+          content = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+        } catch (e1) {
+          try {
+            const cacheUri = FileSystem.cacheDirectory + pickedName;
+            await FileSystem.copyAsync({
+              from: asset.uri,
+              to: cacheUri,
+            });
+            content = await FileSystem.readAsStringAsync(cacheUri, {
+              encoding: FileSystem.EncodingType.UTF8,
+            });
+          } catch (e2) {
+            Alert.alert('Debug Error', 
+              `e1: ${e1 instanceof Error ? e1.message : String(e1)}\ne2: ${e2 instanceof Error ? e2.message : String(e2)}\nURI: ${asset.uri.substring(0, 80)}`
+            );
+            return;
+          }
         }
+
+        if (content.length < 100) {
+          Alert.alert('Error', 'File appears to be empty or invalid.');
+          return;
+        }
+
+        setXmlContent(content);
       }
     } catch {
       Alert.alert('Error', 'Could not open file picker.');
@@ -65,7 +83,7 @@ export default function PANFormScreen({ navigation }: Props) {
     if (!canContinue) return;
     navigation.navigate('PANVerify', {
       panNumber: panNumber.trim(),
-      fileUri: fileUri!,
+      xmlContent: xmlContent!,
       fileName: fileName ?? 'pan.xml',
     });
   }
