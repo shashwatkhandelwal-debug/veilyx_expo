@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { COLORS } from '../constants';
@@ -55,9 +55,7 @@ export default function PANFormScreen({ navigation }: Props) {
               encoding: FileSystem.EncodingType.UTF8,
             });
           } catch (e2) {
-            Alert.alert('Debug Error', 
-              `e1: ${e1 instanceof Error ? e1.message : String(e1)}\ne2: ${e2 instanceof Error ? e2.message : String(e2)}\nURI: ${asset.uri.substring(0, 80)}`
-            );
+            Alert.alert('Error', 'Could not read PAN XML file. Please try again.');
             return;
           }
         }
